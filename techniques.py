@@ -198,7 +198,7 @@ class Techniques:
         return change
     
     #def hidden_pair(self):
-    
+    #create function that simplifies repeating row, col, box
 
 
 
