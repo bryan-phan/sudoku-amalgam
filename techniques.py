@@ -1,3 +1,5 @@
+from itertools import combinations
+
 from board import Board
 from solver import Solver
 
@@ -54,6 +56,18 @@ class Techniques:
                 cells.append((r, c))
 
         return cells
+
+    def all_houses(self):
+        #i'll go back and simplify all other functions with this
+        for r in range(9):
+            yield "Row", r, self.row_cells(r)
+
+        for c in range(9):
+            yield "Col", c, self.col_cells(c)
+
+        for r in range(0, 9, 3):
+            for c in range(0, 9, 3):
+                yield "Box", (r, c), self.box_cells(r, c)
 
     def house_cells(self, cells):
         '''
@@ -122,7 +136,7 @@ class Techniques:
                     
         return False
 
-# from this point beyond, every function WILL call naked and hidden single to fill in cell
+
     def pair_candidates(self, cells):
         #bascially house_cells but for pairs instead
         pair_map = {}
@@ -139,7 +153,7 @@ class Techniques:
                 if pair not in pair_map:
                     pair_map[pair] = []
                 
-                pair_map[pair].append((r, c))
+                pair_map[pair].append((r, c)) 
         
         return pair_map
 
@@ -154,7 +168,6 @@ class Techniques:
             row_check = self.pair_candidates(self.row_cells(r))
             for pair, positions in row_check.items():
                 if len(positions) == 2:
-                    
                     p1, p2 = pair
                     for c in range(9):
                         if (r, c) in self.solver.candidates and (r, c) not in positions:
@@ -197,8 +210,32 @@ class Techniques:
 
         return change
     
-    #def hidden_pair(self):
-    #create function that simplifies repeating row, col, box
+    def hidden_pair(self):
+        for house_type, house_id, cells in self.all_houses():
+            positions = self.house_cells(cells)
+            #takes all combination pairs 
+            for first, second in combinations(range(1, 10), 2):
+                pair_cells = positions[first]
+
+                if len(pair_cells) != 2 or pair_cells != positions[second]:
+                    continue
+
+                allowed = {first, second}
+                changed = False
+
+                for row, col in pair_cells:
+                    before = set(self.solver.candidates[(row, col)])
+                    self.solver.candidates[(row, col)].intersection_update(allowed)
+
+                    if self.solver.candidates[(row, col)] != before:
+                        changed = True
+
+                if changed:
+                    print(f"Hidden pair: {(first, second)} {house_type}: {house_id} Positions: {pair_cells}")
+                    return True
+
+        return False
+
 
 
 

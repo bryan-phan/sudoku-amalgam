@@ -41,7 +41,7 @@ class Solver:
 
         return True
     
-    
+
     def empty_cell(self):
         for r in range(9):
             for c in range(9):
@@ -61,12 +61,12 @@ class Solver:
 
         for num in range(1, 10):
             if self.board.is_valid(r, c, num):
-                self.board.set(r, c, num)
+                self.board.place_value(r, c, num)
 
                 if self.backtracking():
                     return True
                 
-                self.board.set(r, c, 0)
+                self.board.clear(r, c)
 
         return False
     

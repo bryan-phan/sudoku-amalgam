@@ -1,0 +1,127 @@
+board.py should only handle setting up the board and mutating its current state
+There are a few things this file should be able to do
+
+
+- create the board
+- Load in the board
+- check if the board is in a valid state
+- set a value to a cell on the board (so long as its empty)
+- clear a cell value on the board back to zero
+- get a cell and its value from the board
+
+---------------------------------------------------------------------------------------------------------------------------
+
+solver.py should only handle mutating cells and candidates.
+    so like placing values inside cells and removing the candidates
+
+**Most Sudoku techniques rely on candidate removal**
+- create a candidate set for each cell that is empty
+
+// For mutating the candidate list and board while solving
+- place a value in a valid cell 
+- clear candidates of all cells in the house NOT the target (usually for naked)
+- keep only certain candidates and clear all else (for hidden pairs)
+**I could probably combine the logic of the last two
+
+~~i need to do a better job at splitting up tasks...~~
+
+- backtracking for extra validation (i could optimize this further but i wont) 
+- detects an empty cell (helper for backtracking // honestly i can remove this since i only used it once)
+- find the candidates for one cell (is used to make the entire candidates list) (i can delete this and merge when making candidate list)
+
+----------------------------------------------------------------------------------------------------------------------------
+
+techniques.py should ONLY detect a pattern of cells.
+    TECHNIQUES:
+PREFACE: A house is any row, column, or 3x3 subgrid
+
+-----------------------------------------------------------------------------------------------------------------------------
+-naked single
+    - if there is only one candidate inside a cell
+        - place it
+-hidden single
+    - if only one number exists as a candidate inside a house
+        - place it
+----------------------------------------------------------------------------------------------------------------------------
+
+- naked pair
+    - if there are only exactly two candidates inside two cells within a house
+        - remove those number from the candidate lists from all other cells
+            Let A be a candidate list for a point and B be another list
+            A == B
+            The sets must be equal for a naked pair
+
+- hidden pair
+    - if only two numbers can be inside two cells within a house (other candidates may be in the same set)
+        - remove candidates that aren't those numbers in the matching cells
+        - remove candidates that ARE those numbers from all other cells
+    
+    the logic is that A intersect B == A where A are the allowed candidates
+    so we need to find a way to make the set of ALLOWED numbers
+
+    try every possible combination of pairs:
+        if only two points come up for the first number, check the points
+        if only two points come up for the second number and they're equal to the first number's points,
+            it is a hidden double: make a set out of this
+        
+        now intersect that set with the points we just got and clear other candidates NOT the pair (A intersect B == A)
+
+        Let C = candidates that have the numbers in the pair but want to remove ... so js subtract A from C 
+        now clear candidates in the house that have those pairs in it and update it to the current board state
+
+----------------------------------------------------------------------------------------------------------------------------
+- naked triple
+    if three cells contain only three total candidates within a house
+    Let A, B, C be candidates for a set:
+    That means A union B union C should have a cardinality of 3
+
+    make a set of triplets with the same logic as a naked double:
+
+    idea 1: 
+    - make seperate variables each time you find a length(3) set.
+    - do the union operation on the three of them and see if the size turns out to three
+    - if it does, save the union set to a variable.
+    - clear candidates thats NOT inside the triplet by interesecting with the unioned set
+
+    idea 2: 
+    - don't make three variables
+    - instead, on every iteration you find a length(3) set, you just union it.
+    - check if the unioned set == 3. if so, save that set to a variable:
+
+    -idea 3:
+    - helper function to create set of three allowed
+    - put it in a dictionary. keys = candidate triplets, values = points allowed
+
+    now run through every point in that house:
+    - if the point has candidates AND the points aren't in the value list, clear ts
+
+    done.
+
+
+OKAY I NEED HELPER FUNCTIONS:
+    - for nakeds, i need a way to make the set of their respective numbers:
+        KEY = PAIR_NUMBER, KEY = POINTS
+        so maybe based on the number, i'll make a set of that size.
+        Size One: 1 key should have 1 point:
+        Size Two: 2 keys should have 2 points:
+        Size Three: 3 keys should have 3 points:
+
+        THIS IS ONLY FOR NAKED:
+        Basically you need to make a pair_map for all possible respective sizes.
+        If the value of those pair map have a length of the size you need, 
+        whichever pair has your size number, THATS THE NAKED CANDIDATE:
+
+    - for hiddens, i need a way to put numbers with the points list so 
+        KEY = NUMBERS 1-9; KEY = POINTS
+        hiddens will be found if there are n elements inside the list and those points share the same elements
+
+    
+
+
+
+
+
+
+    
+
+

@@ -5,14 +5,24 @@ class Board:
         self.grid = [[0 for i in range(9)] for j in range(9)]
 
     def set(self, row, col, value):
-        if not (0 <= row < 9 and 0 <= col < 9 and 0 <= value <= 9):
+        if not (0 <= row < 9 and 0 <= col < 9 and 1 <= value <= 9):
             return False
-        
-        if value == 0 or self.is_valid(row, col, value):
-            self.grid[row][col] = value
-            return True
-        
-        return False
+
+        if self.grid[row][col] != 0:
+            return False
+
+        if not self.is_valid(row, col, value):
+            return False
+
+        self.grid[row][col] = value
+        return True
+    
+    def clear(self, row, col):
+        if not (0 <= row < 9 and 0 <= col < 9):
+            return False
+
+        self.grid[row][col] = 0
+        return True
 
     def get(self, row, col):
         if 0 <= row < 9 and 0 <= col < 9:
