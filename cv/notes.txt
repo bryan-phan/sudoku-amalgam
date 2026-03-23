@@ -1,0 +1,21 @@
+idk opencv
+
+i need to be able to read the image
+
+when i scan the image theres gonna be pixels and shi
+
+well i need to scan the grid
+
+find a way to find the outline of the 9x9 grid (or maybe the cell)?
+
+i know you can grayscale it so you can see the patterns easier
+
+i also need to warp it so its straight
+
+then read the cell digit somehow
+
+make empty boxes just 0
+
+and then build the 2D array
+
+----------------------------------------------------------------------
