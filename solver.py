@@ -60,9 +60,7 @@ class Solver:
         r, c = empty
 
         for num in range(1, 10):
-            if self.board.is_valid(r, c, num):
-                self.board.place_value(r, c, num)
-
+            if self.board.set(r, c, num):
                 if self.backtracking():
                     return True
                 

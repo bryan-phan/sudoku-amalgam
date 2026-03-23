@@ -109,13 +109,18 @@ OKAY I NEED HELPER FUNCTIONS:
         THIS IS ONLY FOR NAKED:
         Basically you need to make a pair_map for all possible respective sizes.
         If the value of those pair map have a length of the size you need, 
-        whichever pair has your size number, THATS THE NAKED CANDIDATE:
+        choose n cells in a house
+        if the union of their candidates has size n, and each of those cells has candidates only from that union, then it is a naked n
 
     - for hiddens, i need a way to put numbers with the points list so 
         KEY = NUMBERS 1-9; KEY = POINTS
-        hiddens will be found if there are n elements inside the list and those points share the same elements
-
+        for conbination of n numbers, the union of of the points sets must havea cardinality of n
+        the union of the n points must be size n
     
+---------------
+
+next is boxline reductions
+
 
 
 
