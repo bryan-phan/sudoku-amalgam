@@ -119,7 +119,26 @@ OKAY I NEED HELPER FUNCTIONS:
     
 ---------------
 
-next is boxline reductions
+
+^^above notes will not be consistent with my actual program so take it with a grain of salt
+    the entire thing is js supposed to be my thought process so i could write it down. i realized that I didn't 
+    need to have a seperate function for each individual technique since hidden/naked subsets shared a single rule.
+
+    This was hard for me to grasp since this wasn't the way I played sudoku so I eventually figured out that this was the case. 
+    Maybe I should've done more research beforehand but its whatever
+
+next is box/line reductions
+https://www.sudokuwiki.org/intersection_removal
+
+pair or triple in a box if: aligned by row, column, box. 
+
+This only happens for ONE number. So if two/three cells share a number inside a 3x3 box, 
+you can remove that candidate number for any shared houses (row or col). and the reverse is true
+
+
+
+
+
 
 
 

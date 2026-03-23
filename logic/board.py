@@ -42,7 +42,6 @@ class Board:
                 print(val if val != 0 else ".", end=" ")
 
             print()
-
     # Checking validity of board
     def is_valid(self, row, col, value):
         for c in range(9):

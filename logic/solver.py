@@ -41,15 +41,13 @@ class Solver:
 
         return True
     
-
     def empty_cell(self):
         for r in range(9):
             for c in range(9):
                 if self.board.get(r, c) == 0:
                     return (r, c)
         
-        return None
-    
+        return None  
     # if all else fails
     def backtracking(self):
         empty = self.empty_cell()
@@ -67,7 +65,6 @@ class Solver:
                 self.board.clear(r, c)
 
         return False
-    
     #big boy solving 
     def cell_candidates(self, r, c):
         candidates = set()

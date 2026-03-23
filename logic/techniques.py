@@ -2,37 +2,6 @@ from board import Board
 from solver import Solver
 from itertools import combinations
 
-'''
-I don't think I'll make a class for this. I guess one approach of this would be to try one technique and see if it can be applied anywhere on the board. 
-If not, proceed with the next technique.
-
-This sounds pretty hard considering things like hidden pairs and triples can happen on the vertical or horizontal
-
-Okay so, after filling in a cell, it should remove any candidates within its house and then reasses 
-
-Techniques should go in order of magnitude. so cell count for example. 
-if i do techinque with 2 cells, i should run techinque with 1 cell right after
-
-'''
-'''After updating the board, it should its candidates'''
-
-
-"""
-        i need to make helper functions... 
-
-        okay so heres the plan:
-
-        I need to get all possible candidates for each house. So..., i'll make a dict for keys being the numbers and its value with the points
-        If theres only one point inside the number, its a hidden single
-        If theres only two points iside the number, and another cell has those same numbers, hidden pair
-        same logic for hidden triples
-
-        The idea is that for anything beyond singles, it NEEDS to remove the candidates in the house. 
-
-        That means any technique involving singles will justww solve the cell. SO. hidden single and naked single will be our cell fill ins.
-"""
-
-
 class Techniques:
 
     def __init__(self, board):
@@ -100,7 +69,7 @@ class Techniques:
                 r, c = next(iter(union_points))
 
                 if self.solver.place_value(r, c, num):
-                    print(f"Hidden single found in {type}: {id}; point {(r, c)}")
+                    print(f"Hidden single found in {type}: {id}; Placed {num} at point {(r, c)}")
                     return True
 
         return False
@@ -137,8 +106,9 @@ class Techniques:
         #if i didn't use list, it would raise an error if place_value changed the length dict
         for (r, c), candidates in list(self.solver.candidates.items()):
             if len(candidates) == 1:
-                if self.solver.place_value(r, c, next(iter(candidates))):
-                    print(f"Naked Single used at {r, c}. ")
+                num = next(iter(candidates))
+                if self.solver.place_value(r, c, num):
+                    print(f"Naked Single placed {num} at point {r, c}. ")
                     return True
 
         return False
@@ -167,7 +137,6 @@ class Techniques:
             print(f"Naked quad at {house_type}: {house_ID} at point(s): {points}")
             return house_truth
         return False
-    
 
 #helper functions for naked and hiddens
     def naked_subsets(self, cells, size):
@@ -216,6 +185,8 @@ class Techniques:
                     before = set(self.solver.candidates[(r, c)])
                     self.solver.candidates[(r, c)] -= union_nums
                     if before != self.solver.candidates[(r, c)]:
+                        removed = before - self.solver.candidates[(r, c)]
+                        print(f"Naked {size} removed {sorted(removed)} from {(r, c)} in {type} {id}")
                         changed = True
 
                 if changed:
@@ -263,6 +234,8 @@ class Techniques:
                     self.solver.candidates[(r, c)] &= set(nums)
 
                     if before != self.solver.candidates[(r, c)]:
+                        removed = before - self.solver.candidates[(r, c)]
+                        print(f"Hidden {size} removed {sorted(removed)} from {(r, c)} in {type} {id}")
                         changed = True
 
                 if changed:
@@ -270,12 +243,139 @@ class Techniques:
 
         return False
 
+    #box-line reduction
+    '''
+    use hidden pair approach. 
+    look thru a box, (use box function)
+    sort them by how many time a number appears
+    BUT it has to be in the same row or col
 
-#solves the puzzle
+
+    basically, within a box, go thru each row or col again
+
+    '''
+
+    def boxline_reduction(self):
+        for r in range(0, 9 , 3):
+            for c in range(0, 9, 3):
+                positions = self.house_cells(self.box_cells(r, c))
+                #house_cells is a dictionary --> 0: (x, y)
+
+                #iterate thru each number
+                for num, points in positions.items():
+                    #hidden single case
+                    if len(points) < 2:
+                        continue
+
+                    rows = set(r for r, _ in points)
+                    #if a number all share a row (i.e. they share the same candidates), the set should be 1 element
+                    if len(rows) == 1:
+                        row = next(iter(rows))
+                        remove = [(row, col) for col in range(9) if not c <= col < c + 3]
+                        #now remove is a list of tuples (tuples with points) that we need to remove
+                        #go thru each point and remove that number
+                        for x, y in remove:
+                            if (x, y) not in self.solver.candidates:
+                                continue
+
+                            before = set(self.solver.candidates[(x, y)])
+                            self.solver.candidates[(x, y)].discard(num)
+                            if before != self.solver.candidates[(x, y)]:
+                                print(f"Box-line reduction removed {num} from {(x, y)} // {num} is locked to row {row} in box {(r, c)}")
+                                return True
+
+                    #do the same as rows
+                    cols = set(c for _, c in points)
+                    if len(cols) == 1:
+                        col = next(iter(cols))
+                        remove = [(row, col) for row in range(9) if not r <= row < r + 3]
+                        for x, y in remove:
+                            if (x, y) not in self.solver.candidates:
+                                continue
+
+                            before = set(self.solver.candidates[(x, y)])
+                            self.solver.candidates[(x, y)].discard(num)
+                            if before != self.solver.candidates[(x, y)]:
+                                print(f"Box-line reduction removed {num} from {(x, y)} // {num} is locked to col {col} in box {(r, c)}")
+                                return True
+        return False
+    
+    def linebox_reduction(self):
+
+        for r in range(9):
+            positions = self.house_cells(self.row_cells(r))
+
+            for num, points in positions.items():
+                if len(points) < 2:
+                    continue
+                
+                #sees if the row is also inside a box
+                box_cols = set(c // 3 for _, c in points)
+
+                #checks if box share the same candidate
+                if len(box_cols) == 1:
+                    #gets the box index
+                    box_r = (r // 3) * 3
+                    box_c = next(iter(box_cols)) * 3
+                    changed = False
+                    
+                    #now grab all candidates inside box
+                    for row, col in self.box_cells(box_r, box_c):
+                        #skips box that we're keeping
+                        if row == r or (row, col) not in self.solver.candidates:
+                            continue
+                        
+                        if num in self.solver.candidates[(row, col)]:
+                            self.solver.candidates[(row, col)].discard(num)
+                            print(f"Line-box reduction removed {num} from {(row, col)} // row {r} locks {num} into box {(box_r, box_c)}")
+                            changed = True
+                         
+                    if changed:
+                        print(f"Line-box reduction removed {num} from {(row, col)} // row {r} locks {num} into box {(box_r, box_c)}")
+                        return changed
+
+
+        for c in range(9):
+            positions = self.house_cells(self.col_cells(c))
+
+            for num, points in positions.items():
+                if len(points) < 2:
+                    continue
+                
+                #sees if the row is also inside a box
+                box_rows = set(r // 3 for r, _ in points)
+
+                #checks if box share the same candidate
+                if len(box_rows) == 1:
+                    #gets the box index
+                    box_c = (c // 3) * 3
+                    box_r = next(iter(box_rows)) * 3
+                    changed = False
+                    
+                    #now grab all candidates inside box
+                    for row, col in self.box_cells(box_r, box_c):
+                        #skips box that we're keeping
+                        if col == c or (row, col) not in self.solver.candidates:
+                            continue
+                        
+                        if num in self.solver.candidates[(row, col)]:
+                            self.solver.candidates[(row, col)].discard(num)
+                            print(f"Line-box reduction removed {num} from {(row, col)} // col {c} locks {num} into box {(box_r, box_c)}")
+                            changed = True
+                         
+                    if changed:
+                        print(f"Line-box reduction removed {num} from {(row, col)} // col {c} locks {num} into box {(box_r, box_c)}")
+                        return changed
+                        
+        return False
+    
+#solves the puzzle 
     def solve_logic(self):
         techniques = [
             self.naked_single,
             self.hidden_single,
+            self.boxline_reduction,
+            self.linebox_reduction,
             self.naked_pair,
             self.hidden_pair,
             self.naked_triple,
@@ -294,7 +394,7 @@ class Techniques:
             else:
                 return False
 
-    def solve(self, use_backtracking=True):
+    def solve(self, use_backtracking=False):
         if self.solve_logic():
             return True
 
@@ -307,4 +407,5 @@ class Techniques:
             self.solver.initialize_candidates()
 
         return solved
+
 
