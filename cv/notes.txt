@@ -19,3 +19,15 @@ make empty boxes just 0
 and then build the 2D array
 
 ----------------------------------------------------------------------
+controller class and expose endpoint
+
+my API for python
+
+post request  call to sudoku service // payload being the board
+
+local host
+or deployment 
+
+
+XYZ format for resume
+
