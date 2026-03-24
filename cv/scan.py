@@ -13,16 +13,26 @@ class Scan:
         self.img = self.original.copy()
         #for da 4 corner contour used to warp image to straight
         self.biggest = None
+        self.warped = None
 
         self.grayscale()
         self.blur()
         self.edge()
         self.contours()
         self.show_image()
+        self.cells = self.splice()
+        self.show_cells()
 
     def show_image(self):
         cv2.imshow("Image", self.img)
         cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    def show_cells(self):
+        for r in range(9):
+            for c in range(9):
+                cv2.imshow(f"Cell {r}-{c}", self.cells[r][c])
+                cv2.waitKey(0)
         cv2.destroyAllWindows()
 
     def grayscale(self):
@@ -60,7 +70,7 @@ class Scan:
 
         if biggest is not None:
             cv2.drawContours(self.img, [biggest], -1, (0, 255, 0), 2)
-            self.img = self.warp(biggest)
+            self.warped = self.warp(biggest)
 
     def order_points(self, points):
         points = points.reshape(4, 2).astype(np.float32)
@@ -98,7 +108,10 @@ class Scan:
         return cv2.warpPerspective(self.original, matrix, (width, height))
     
     def splice(self):
-        height, width = self.warp.shape[:2]
+        if self.warped is None:
+            return None
+        
+        height, width = self.warped.shape[:2]
 
         #divides the image into a 9x9 grid
         cell_h = height // 9
@@ -114,7 +127,7 @@ class Scan:
                 x1 = c * cell_w
                 x2 = (c + 1) * cell_w
 
-                cell = self.warp[y1:y2, x1:x2]
+                cell = self.warped[y1:y2, x1:x2]
                 #inside row_cells are column cells
                 row_cells.append(cell)
             #makes the entire grid
