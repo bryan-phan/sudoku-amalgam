@@ -98,7 +98,7 @@ class Scan:
         return cv2.warpPerspective(self.original, matrix, (width, height))
     
     def splice(self):
-        height, width = self.original.shape[:2]
+        height, width = self.warp.shape[:2]
 
         #divides the image into a 9x9 grid
         cell_h = height // 9
@@ -114,7 +114,7 @@ class Scan:
                 x1 = c * cell_w
                 x2 = (c + 1) * cell_w
 
-                cell = self.original[y1:y2, x1:x2]
+                cell = self.warp[y1:y2, x1:x2]
                 #inside row_cells are column cells
                 row_cells.append(cell)
             #makes the entire grid
@@ -122,12 +122,4 @@ class Scan:
 
         return cells
             
-
-
-
-
-
-
-
-
 test = Scan()
