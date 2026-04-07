@@ -35,7 +35,12 @@ class Scan:
             for c in range(9):
                 cell = self.cells[r][c]
                 gray = cv2.cvtColor(cell, cv2.COLOR_BGR2GRAY)
-                small = cv2.resize(gray, (28, 28), interpolation=cv2.INTER_AREA)
+                
+                # Threshold optimized for digit extraction
+                _, thresh = cv2.threshold(gray, 80, 255, cv2.THRESH_BINARY_INV)
+                
+                # Resize to 28x28 (MNIST size)
+                small = cv2.resize(thresh, (28, 28), interpolation=cv2.INTER_AREA)
 
                 file_name = f"cell_{r}_{c}.png"
                 save_path = os.path.join(output_dir, file_name)
