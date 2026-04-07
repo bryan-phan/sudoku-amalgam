@@ -2,7 +2,7 @@ import cv2
 import os
 import numpy as np
 
-class Scan:
+class Scan: 
     def __init__(self):
         self.path = os.getcwd() + r"\cv" + r"\test_imgs" + r"\angled.jpg"
 
@@ -21,19 +21,25 @@ class Scan:
         self.contours()
         self.show_image()
         self.cells = self.splice()
-        self.show_cells()
+        self.export_cells()
 
     def show_image(self):
         cv2.imshow("Image", self.img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    def show_cells(self):
+    def export_cells(self):
+        output_dir = os.path.join(os.getcwd(), "ml", "cell_export")
+        os.makedirs(output_dir, exist_ok=True)
         for r in range(9):
             for c in range(9):
-                cv2.imshow(f"Cell {r}-{c}", self.cells[r][c])
-                cv2.waitKey(0)
-        cv2.destroyAllWindows()
+                cell = self.cells[r][c]
+                gray = cv2.cvtColor(cell, cv2.COLOR_BGR2GRAY)
+                small = cv2.resize(gray, (28, 28), interpolation=cv2.INTER_AREA)
+
+                file_name = f"cell_{r}_{c}.png"
+                save_path = os.path.join(output_dir, file_name)
+                cv2.imwrite(save_path, small)
 
     def grayscale(self):
         self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
