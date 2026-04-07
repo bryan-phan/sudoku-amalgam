@@ -21,19 +21,8 @@ model.load_state_dict(torch.load('ml/best_model.pth'))
 model.eval()
 
 def predict_digit(image_path):
-    """Predict single digit from image, return 0 if empty"""
+    """Predict single digit from image"""
     img = Image.open(image_path).convert('L')
-    img_array = np.array(img)
-    
-    # If cell is mostly black (>90% black pixels), it's empty
-    black_pixels = np.sum(img_array < 50)
-    total_pixels = img_array.size
-    black_ratio = black_pixels / total_pixels
-    
-    if black_ratio > 0.9:
-        return 0  # Empty cell
-    
-    # Otherwise, predict the digit
     img_tensor = transform(img).unsqueeze(0).to(device)
     
     with torch.no_grad():
@@ -78,11 +67,11 @@ if __name__ == "__main__":
         print("Predicting Sudoku grid from extracted cells...")
         sudoku_predictions = predict_grid(grid_paths)
         
-        print("\n✓ Sudoku Grid Predictions:")
+        print("\n[OK] Sudoku Grid Predictions:")
         print(sudoku_predictions)
         
         # Optional: Save to file
         np.savetxt('sudoku_predictions.txt', sudoku_predictions, fmt='%d')
-        print("\nSaved to sudoku_predictions.txt")
+        print("\n[DONE] Saved to sudoku_predictions.txt")
     else:
         print(f"Cell export folder not found at {cell_export_path}")

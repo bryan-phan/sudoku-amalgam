@@ -37,7 +37,7 @@ class Scan:
                 gray = cv2.cvtColor(cell, cv2.COLOR_BGR2GRAY)
                 
                 # Threshold optimized for digit extraction
-                _, thresh = cv2.threshold(gray, 80, 255, cv2.THRESH_BINARY_INV)
+                _, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
                 
                 # Resize to 28x28 (MNIST size)
                 small = cv2.resize(thresh, (28, 28), interpolation=cv2.INTER_AREA)
