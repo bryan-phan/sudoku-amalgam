@@ -1,5 +1,12 @@
-from board import Board
-from solver import Solver
+try:
+    from .board import Board
+except ImportError:
+    from board import Board
+
+try:
+    from .solver import Solver
+except ImportError:
+    from solver import Solver
 from itertools import combinations
 
 class Techniques:

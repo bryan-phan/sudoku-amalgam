@@ -1,4 +1,7 @@
-from board import Board
+try:
+    from .board import Board
+except ImportError:
+    from board import Board
 
 class Solver:
     def __init__(self, board):

@@ -1,5 +1,12 @@
-from board import Board
-from techniques import Techniques
+try:
+    from .board import Board
+except ImportError:
+    from board import Board
+
+try:
+    from .techniques import Techniques
+except ImportError:
+    from techniques import Techniques
 
 GRID = [
     [8, 0, 0, 7, 0, 9, 0, 0, 0],
