@@ -20,6 +20,12 @@ class DigitRecognizer:
         self.min_blackhat_response = 20.0
         self.max_match_score = 0.10
         self.min_score_gap = 0.04
+        self.fallback_crop_ratios = (self.crop_ratio, 0.08, 0.05)
+        self.fallback_min_component_area = 20
+        self.fallback_min_component_darkness = 180.0
+        self.fallback_border_darkness_bonus = 20.0
+        self.fallback_max_match_score = 0.0
+        self.fallback_min_score_gap = 0.02
         self.template_bank = self._build_template_bank()
 
     def _load_gray(self, image_or_path):
@@ -63,6 +69,59 @@ class DigitRecognizer:
         canvas[y_offset : y_offset + height, x_offset : x_offset + width] = crop
 
         return cv2.resize(canvas, (self.template_size, self.template_size), interpolation=cv2.INTER_AREA)
+
+    def _rank_digit_scores(self, prepared):
+        digit_scores = {}
+        for digit, templates in self.template_bank.items():
+            digit_scores[digit] = min(self._score(prepared, template) for template in templates)
+
+        ranked = sorted(digit_scores.items(), key=lambda item: item[1])
+        return digit_scores, ranked
+
+    def _classify_prepared_mask(self, prepared):
+        digit_scores, ranked = self._rank_digit_scores(prepared)
+
+        if self._count_holes(prepared) >= 2:
+            best_digit = 8
+            best_score = digit_scores[8]
+            second_score = min(score for digit, score in ranked if digit != 8)
+        else:
+            best_digit, best_score = ranked[0]
+            second_score = next(score for digit, score in ranked if digit != best_digit)
+
+        if best_digit == 2:
+            seven_score = digit_scores[7]
+            if self._bottom_band_ratio(prepared) < 0.09 and (seven_score - best_score) < 0.75:
+                best_digit = 7
+                best_score = seven_score
+                second_score = next(
+                    score for digit, score in ranked if digit not in {7, 2}
+                )
+
+        return best_digit, best_score, second_score
+
+    def _is_confident_primary_match(self, best_score, second_score):
+        if best_score > self.max_match_score:
+            return False
+
+        return (second_score - best_score) >= self.min_score_gap
+
+    def _is_confident_fallback_match(self, best_score, second_score, meta):
+        if best_score > self.fallback_max_match_score:
+            return False
+
+        if (second_score - best_score) < self.fallback_min_score_gap:
+            return False
+
+        if meta["darkness"] < self.fallback_min_component_darkness:
+            return False
+
+        if meta["touches_border"]:
+            return meta["darkness"] >= (
+                self.fallback_min_component_darkness + self.fallback_border_darkness_bonus
+            )
+
+        return True
 
     def _extract_digit_mask(self, image_or_path, crop_ratio=None):
         gray = self._load_gray(image_or_path)
@@ -121,6 +180,91 @@ class DigitRecognizer:
             return None
 
         return self._normalize_mask(best_mask)
+
+    def _extract_threshold_mask(self, image_or_path, crop_ratio):
+        gray = self._load_gray(image_or_path)
+        roi = self._crop_inner(gray, crop_ratio=crop_ratio)
+        roi_height, roi_width = roi.shape
+
+        normalized = cv2.normalize(roi, None, 0, 255, cv2.NORM_MINMAX)
+        _, binary = cv2.threshold(normalized, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+
+        best_mask = None
+        best_meta = None
+        best_score = float("-inf")
+
+        for label in range(1, num_labels):
+            x, y, width, height, area = stats[label]
+            if area < self.fallback_min_component_area:
+                continue
+
+            if width < 3 or height < max(6, int(roi_height * 0.18)):
+                continue
+
+            if width > int(roi_width * 0.82) or height > int(roi_height * 0.92):
+                continue
+
+            fill_ratio = area / float(max(width * height, 1))
+            if fill_ratio < 0.05 or fill_ratio > 0.85:
+                continue
+
+            component = labels == label
+            darkness = 255.0 - float(np.mean(normalized[component]))
+            center_dist = (
+                abs((x + width / 2.0) - roi_width / 2.0) / float(max(roi_width, 1))
+                + abs((y + height / 2.0) - roi_height / 2.0) / float(max(roi_height, 1))
+            )
+            touches_border = (
+                x <= 1
+                or y <= 1
+                or (x + width) >= roi_width - 1
+                or (y + height) >= roi_height - 1
+            )
+
+            score = darkness + area * 0.03 - center_dist * 45.0 - (15.0 if touches_border else 0.0)
+
+            if score > best_score:
+                mask = np.zeros_like(binary, dtype=np.uint8)
+                mask[component] = 255
+                best_mask = mask
+                best_meta = {
+                    "crop_ratio": crop_ratio,
+                    "darkness": darkness,
+                    "touches_border": touches_border,
+                }
+                best_score = score
+
+        if best_mask is None:
+            return None, None
+
+        normalized_mask = self._normalize_mask(best_mask)
+        if normalized_mask is None:
+            return None, None
+
+        return normalized_mask, best_meta
+
+    def _fallback_digit_match(self, image_or_path):
+        best_result = None
+
+        for crop_ratio in dict.fromkeys(self.fallback_crop_ratios):
+            prepared, meta = self._extract_threshold_mask(image_or_path, crop_ratio)
+            if prepared is None:
+                continue
+
+            best_digit, best_score, second_score = self._classify_prepared_mask(prepared)
+            if not self._is_confident_fallback_match(best_score, second_score, meta):
+                continue
+
+            candidate = (best_digit, best_score, meta["touches_border"], -meta["darkness"])
+            if best_result is None or candidate[1:] < best_result[1:]:
+                best_result = candidate
+
+        if best_result is None:
+            return None
+
+        return best_result[0], best_result[1]
 
     def _count_holes(self, mask):
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
@@ -269,33 +413,21 @@ class DigitRecognizer:
 
     def recognize_digit(self, image_or_path):
         prepared = self._extract_digit_mask(image_or_path)
+        if prepared is not None:
+            best_digit, best_score, second_score = self._classify_prepared_mask(prepared)
+            if self._is_confident_primary_match(best_score, second_score):
+                return best_digit, best_score
+        else:
+            best_score = 0.0
+
+        fallback = self._fallback_digit_match(image_or_path)
+        if fallback is not None:
+            return fallback
+
         if prepared is None:
             return 0, 0.0
 
-        if self._count_holes(prepared) >= 2:
-            best_eight = min(self._score(prepared, template) for template in self.template_bank[8])
-            return 8, best_eight
-
-        digit_scores = {}
-        for digit, templates in self.template_bank.items():
-            digit_scores[digit] = min(self._score(prepared, template) for template in templates)
-
-        ranked = sorted(digit_scores.items(), key=lambda item: item[1])
-        best_digit, best_score = ranked[0]
-        second_score = ranked[1][1]
-
-        if best_digit == 2:
-            seven_score = digit_scores[7]
-            if self._bottom_band_ratio(prepared) < 0.09 and (seven_score - best_score) < 0.75:
-                return 7, seven_score
-
-        if best_score > self.max_match_score:
-            return 0, best_score
-
-        if (second_score - best_score) < self.min_score_gap:
-            return 0, best_score
-
-        return best_digit, best_score
+        return 0, best_score
 
     def recognize_grid(self, image_grid_9x9):
         grid_inputs = np.asarray(image_grid_9x9, dtype=object)
