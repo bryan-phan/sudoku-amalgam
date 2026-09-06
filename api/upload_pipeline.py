@@ -1,28 +1,23 @@
-import contextlib
-import io
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 from fastapi import HTTPException, Request, UploadFile
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from cv.scan import Scan
-from logic.board import Board
-from logic.digit_recognizer import DigitRecognizer
-from logic.techniques import Techniques
+from ocr.pipeline import load_grid_inputs, process_grid_inputs
 
-IMAGE_DIR = ROOT / "cv" / "test_imgs"
-CELL_EXPORT_DIR = ROOT / "ml" / "cell_export"
-PREDICTIONS_PATH = ROOT / "sudoku_predictions.txt"
+IMAGE_DIR = ROOT / "data" / "images"
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {
     "image/heic": ".heic",
+    "image/heic-sequence": ".heic",
+    "image/heif": ".heif",
+    "image/heif-sequence": ".heif",
     "image/jpeg": ".jpg",
     "image/jpg": ".jpg",
     "image/png": ".png",
@@ -76,44 +71,8 @@ def save_upload(filename, content_type, data):
 
 
 def process_image(image_path, export_cells=False):
-    scanner = Scan(image_path=image_path)
-    cells = scanner.extract_cells()
-
-    if export_cells:
-        scanner.export_cells(CELL_EXPORT_DIR)
-
-    recognizer = DigitRecognizer()
-    predictions, scores = recognizer.recognize_grid(cells)
-    np.savetxt(PREDICTIONS_PATH, predictions, fmt="%d")
-
-    given_count = int(np.count_nonzero(predictions))
-    result = {
-        "predictions": predictions.tolist(),
-        "scores": np.round(scores, 4).tolist(),
-        "given_count": given_count,
-        "predictions_file": str(PREDICTIONS_PATH.relative_to(ROOT)),
-        "solved": False,
-        "solution": None,
-    }
-
-    if export_cells:
-        result["cell_export_dir"] = str(CELL_EXPORT_DIR.relative_to(ROOT))
-
-    if given_count < 12:
-        result["warning"] = (
-            f"Only {given_count} digits recognized, so solving was skipped."
-        )
-        return result
-
-    board = Board()
-    board.load(predictions.tolist())
-    techniques = Techniques(board)
-    with contextlib.redirect_stdout(io.StringIO()):
-        solved = bool(techniques.solve(use_backtracking=True))
-
-    result["solved"] = solved
-    result["solution"] = board.grid
-    return result
+    grid_inputs, cell_export_dir = load_grid_inputs(image_path=image_path, export_cells=export_cells)
+    return process_grid_inputs(grid_inputs, cell_export_dir=cell_export_dir)
 
 
 async def read_upload_payload(request: Request, photo: UploadFile | None):

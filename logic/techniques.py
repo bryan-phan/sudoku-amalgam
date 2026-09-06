@@ -401,14 +401,14 @@ class Techniques:
             else:
                 return False
 
-    def solve(self, use_backtracking=False):
+    def solve(self, use_backtracking=False, max_backtracking_nodes=None):
         if self.solve_logic():
             return True
 
         if not use_backtracking:
             return False
 
-        solved = self.solver.backtracking()
+        solved = self.solver.backtracking(max_nodes=max_backtracking_nodes)
 
         if solved:
             self.solver.initialize_candidates()

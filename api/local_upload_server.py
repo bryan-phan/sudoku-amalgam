@@ -31,7 +31,7 @@ app.add_middleware(
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Local FastAPI server for uploading Sudoku photos into cv/test_imgs."
+        description="Local FastAPI server for uploading Sudoku photos into data/images."
     )
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to. Use 0.0.0.0 for phone access.")
     parser.add_argument("--port", type=int, default=8000, help="Port to listen on.")
