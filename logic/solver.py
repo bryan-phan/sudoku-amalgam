@@ -1,4 +1,7 @@
-from board import Board
+try:
+    from .board import Board
+except ImportError:
+    from board import Board
 
 class Solver:
     def __init__(self, board):
@@ -48,18 +51,52 @@ class Solver:
                     return (r, c)
         
         return None  
+
+    def best_empty_cell(self):
+        best = None
+        best_candidates = None
+
+        for r in range(9):
+            for c in range(9):
+                if self.board.get(r, c) != 0:
+                    continue
+
+                candidates = self.cell_candidates(r, c)
+                if not candidates:
+                    return r, c, candidates
+
+                if best is None or len(candidates) < len(best_candidates):
+                    best = (r, c)
+                    best_candidates = candidates
+
+        if best is None:
+            return None
+
+        r, c = best
+        return r, c, best_candidates
+
     # if all else fails
-    def backtracking(self):
-        empty = self.empty_cell()
+    def backtracking(self, max_nodes=None, state=None):
+        if state is None:
+            state = {"nodes": 0}
+        state["calls"] = state.get("calls", 0) + 1
+
+        empty = self.best_empty_cell()
 
         if empty is None:
             return True
         
-        r, c = empty
+        r, c, candidates = empty
+        if not candidates:
+            return False
 
-        for num in range(1, 10):
+        for num in sorted(candidates):
+            state["nodes"] += 1
+            if max_nodes is not None and state["nodes"] > max_nodes:
+                return False
+
             if self.board.set(r, c, num):
-                if self.backtracking():
+                if self.backtracking(max_nodes=max_nodes, state=state):
                     return True
                 
                 self.board.clear(r, c)
